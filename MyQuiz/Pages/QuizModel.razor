@@ -1,0 +1,117 @@
+﻿@page "/quiz"
+@inject HttpClient Http
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<h3>Das große Gaming-Quiz</h3>
+
+<div class="quiz-container">
+
+	@if (currentQuestion != null)
+	{
+
+		<h3>@currentQuestion.QuestionText</h3>
+
+		@if (isAnswered)
+		{
+			
+		
+
+			@if (isCorrect)
+			{
+				<h4>Deine Antwort ist Richtig: @currentQuestion.Answers[currentQuestion.CorrectAnswerIndex]</h4>
+			}
+			else
+			{
+				<h4>Deine Antwort ist falsch, die richtige Antwort ist @currentQuestion.Answers[currentQuestion.CorrectAnswerIndex]</h4>
+			}
+
+		}
+		<h4>Antwort:</h4>
+
+		<div class="answers">
+			@for (int i = 0; i < currentQuestion.Answers.Count; i++)
+			{
+				var index = i;
+				<button class="btn_answer @GetButtonClass(index)" @onclick="() => CheckAnswers(index)" disabled="@isAnswered">
+					@currentQuestion.Answers[i]
+				</button>
+			}
+
+		</div>
+	}
+
+	<button @onclick="LoadRandomQuestion">Nächste Frage</button>
+	
+
+</div>
+
+@code{
+	private List<Question>? questions;
+	private Question? currentQuestion;
+	private bool isCorrect = false;
+	private bool isAnswered = false;
+	private int selectedAnswerIndex = -1;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var json = await Http.GetStringAsync("sample-data/games.json");
+
+		//Deserisalisierung:
+
+		questions = JsonSerializer.Deserialize<List<Question>>(json);
+
+		LoadRandomQuestion();
+	}
+
+	private void LoadRandomQuestion()
+	{
+		if(questions != null && questions.Count > 0)
+		{
+			var random = new Random();
+			currentQuestion = questions[random.Next(questions.Count)];
+
+			selectedAnswerIndex = -1;
+			isAnswered = false;
+		}
+
+
+	}
+
+	private void CheckAnswers(int index)
+	{
+		selectedAnswerIndex = index;
+		isAnswered = true;
+		isCorrect = selectedAnswerIndex == currentQuestion.CorrectAnswerIndex;
+
+		//Console.WriteLine(isCorrect); //-> zur Überprüfung nur in Consolen-Ansicht im Browser
+		//StateHasChanged(); //->Keine Ahnung was das nochmal macht aber es geht ohne...
+	}
+
+	//Zum Einfärben der Buttons bei Aktion:
+
+	private string GetButtonClass(int index)
+	{
+		if (!isAnswered)
+		{
+			return "btn btn-primary";
+		}
+		if (index == currentQuestion.CorrectAnswerIndex)
+		{
+			return "btn btn-success";
+		}
+		return "btn btn-danger";
+	}
+}
+
+@code {
+	public class Question
+	{
+		[JsonPropertyName("questionText")]
+		public string QuestionText { get; set; } = string.Empty;
+		[JsonPropertyName("answers")]
+		public List<string> Answers { get; set; } = new();
+		[JsonPropertyName("correctAnswerIndex")]
+		public int CorrectAnswerIndex { get; set; }
+	}
+}
